@@ -8,6 +8,8 @@
 
 module Network.TypedProtocol.PingPong.Type where
 
+import           Data.Type.Equality
+
 import           Data.Singletons
 
 import           Network.TypedProtocol.Core
@@ -52,6 +54,11 @@ instance SingI StBusy where
 instance SingI StDone where
     sing = SingDone
 
+instance TestEquality SPingPong where
+    testEquality SingIdle SingIdle = Just Refl
+    testEquality SingBusy SingBusy = Just Refl
+    testEquality SingDone SingDone = Just Refl
+    testEquality _        _        = Nothing
 
 instance Protocol PingPong where
 

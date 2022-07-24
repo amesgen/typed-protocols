@@ -123,6 +123,7 @@ driverSimple tracer Codec{encode, decode} channel@Channel{send} = do
   where
     sendMessage :: forall (st :: ps) (st' :: ps).
                    ( SingI st
+                   , SingI st'
                    , ActiveState st
                    )
                 => (ReflRelativeAgency (StateAgency st)

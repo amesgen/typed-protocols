@@ -68,39 +68,4 @@ decodeTerminatedFrame terminator k = go []
 codecPingPongId
   :: forall m. Monad m
   => Codec PingPong CodecFailure m (AnyMessage PingPong)
-codecPingPongId =
-    Codec{encode,decode}
-  where
-    encode :: forall (st :: PingPong) (st' :: PingPong)
-           .  ( SingI st
-              , ActiveState st
-              )
-           => Message PingPong st st'
-           -> AnyMessage PingPong
-    encode msg = AnyMessage msg
-
-    decode :: forall (st :: PingPong).
-              ActiveState st
-           => Sing st
-           -> m (DecodeStep (AnyMessage PingPong) CodecFailure m (SomeMessage st))
-    decode stok =
-      pure $ DecodePartial $ \mb ->
-        case mb of
-          Nothing -> return $ DecodeFail (CodecFailure "expected more data")
-          Just (AnyMessage msg) -> return $
-            case (stok, msg) of
-              (SingBusy, MsgPong) ->
-                DecodeDone (SomeMessage msg) Nothing
-              (SingIdle, MsgPing) ->
-                DecodeDone (SomeMessage msg) Nothing
-              (SingIdle, MsgDone) ->
-                DecodeDone (SomeMessage msg) Nothing
-
-              (SingIdle, _) ->
-                DecodeFail failure
-                  where failure = CodecFailure ("unexpected client message: " ++ show msg)
-              (SingBusy, _) ->
-                DecodeFail failure
-                  where failure = CodecFailure ("unexpected server message: " ++ show msg)
-
-              (a@SingDone, _) -> notActiveState a
+codecPingPongId = idCodec

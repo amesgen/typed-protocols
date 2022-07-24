@@ -57,39 +57,4 @@ codecReqRespId ::
     forall req resp m
   . (Monad m, Show req, Show resp)
   => Codec (ReqResp req resp) CodecFailure m (AnyMessage (ReqResp req resp))
-codecReqRespId =
-    Codec{encode, decode}
-  where
-    encode :: forall (st  :: ReqResp req resp)
-                     (st' :: ReqResp req resp)
-           .  SingI st
-           => ActiveState st
-           => Message (ReqResp req resp) st st'
-           -> AnyMessage (ReqResp req resp)
-    encode msg = AnyMessage msg
-
-    decode :: forall (st :: ReqResp req resp)
-           .  ActiveState st
-           => Sing st
-           -> m (DecodeStep (AnyMessage (ReqResp req resp)) CodecFailure m (SomeMessage st))
-    decode stok =
-      pure $ DecodePartial $ \mb ->
-        case mb of
-          Nothing -> return $ DecodeFail (CodecFailure "expected more data")
-          Just (AnyMessage msg) -> return $
-            case (stok, msg) of
-              (SingIdle, MsgReq{})
-                -> DecodeDone (SomeMessage msg) Nothing
-              (SingIdle, MsgDone)
-                -> DecodeDone (SomeMessage msg) Nothing
-              (SingBusy, MsgResp{})
-                -> DecodeDone (SomeMessage msg) Nothing
-
-              (SingIdle, _) ->
-                DecodeFail failure
-                  where failure = CodecFailure ("unexpected client message: " ++ show msg)
-              (SingBusy, _) ->
-                DecodeFail failure
-                  where failure = CodecFailure ("unexpected server message: " ++ show msg)
-
-              (a@SingDone, _) -> notActiveState a
+codecReqRespId = idCodec

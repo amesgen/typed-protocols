@@ -1,15 +1,15 @@
-{-# LANGUAGE FlexibleContexts         #-}
-{-# LANGUAGE FlexibleInstances        #-}
-{-# LANGUAGE GADTs                    #-}
-{-# LANGUAGE NamedFieldPuns           #-}
-{-# LANGUAGE QuantifiedConstraints    #-}
-{-# LANGUAGE RankNTypes               #-}
-{-# LANGUAGE ScopedTypeVariables      #-}
-{-# LANGUAGE TypeFamilies             #-}
-{-# LANGUAGE TypeInType               #-}
+{-# LANGUAGE FlexibleContexts      #-}
+{-# LANGUAGE FlexibleInstances     #-}
+{-# LANGUAGE GADTs                 #-}
+{-# LANGUAGE NamedFieldPuns        #-}
+{-# LANGUAGE QuantifiedConstraints #-}
+{-# LANGUAGE RankNTypes            #-}
+{-# LANGUAGE ScopedTypeVariables   #-}
+{-# LANGUAGE TypeFamilies          #-}
+{-# LANGUAGE TypeInType            #-}
 -- @UndecidableInstances@ extension is required for defining @Show@ instance of
 -- @'AnyMessage'@ and @'AnyMessage'@.
-{-# LANGUAGE UndecidableInstances     #-}
+{-# LANGUAGE UndecidableInstances  #-}
 {-# OPTIONS_GHC -Wno-dodgy-imports #-}
 
 -- | Stateful codec.  This module is intended to be imported qualified.
@@ -45,12 +45,12 @@ import           Data.Monoid (All (..))
 
 import           Data.Singletons
 
-import           Network.TypedProtocol.Core
 import           Network.TypedProtocol.Codec (CodecFailure (..),
-                   DecodeStep (..),  SomeMessage (..), hoistDecodeStep,
-                   isoDecodeStep, mapFailureDecodeStep, runDecoder,
-                   runDecoderPure)
+                     DecodeStep (..), SomeMessage (..), hoistDecodeStep,
+                     isoDecodeStep, mapFailureDecodeStep, runDecoder,
+                     runDecoderPure)
 import qualified Network.TypedProtocol.Codec as TP
+import           Network.TypedProtocol.Core
 
 
 -- | A stateful codec.
@@ -58,6 +58,7 @@ import qualified Network.TypedProtocol.Codec as TP
 data Codec ps failure (f :: ps -> Type) m bytes = Codec {
        encode :: forall (st :: ps) (st' :: ps).
                  SingI st
+              => SingI st'
               => ActiveState st
               => f st'
               -> Message ps st st'
@@ -118,6 +119,7 @@ mapFailureCodec g Codec {encode, decode} = Codec {
 data AnyMessage ps (f :: ps -> Type) where
   AnyMessage :: forall ps f (st :: ps) (st' :: ps).
                 ( SingI st
+                , SingI st'
                 , ActiveState st
                 )
              => f st

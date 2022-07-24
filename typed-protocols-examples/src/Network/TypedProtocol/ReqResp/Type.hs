@@ -9,6 +9,8 @@
 
 module Network.TypedProtocol.ReqResp.Type where
 
+import           Data.Type.Equality
+
 import           Data.Singletons
 
 import           Network.TypedProtocol.Core
@@ -34,6 +36,11 @@ instance SingI StBusy where
 instance SingI StDone where
     sing = SingDone
 
+instance TestEquality SReqResp where
+    testEquality SingIdle SingIdle = Just Refl
+    testEquality SingBusy SingBusy = Just Refl
+    testEquality SingDone SingDone = Just Refl
+    testEquality _        _        = Nothing
 
 instance Protocol (ReqResp req resp) where
 
