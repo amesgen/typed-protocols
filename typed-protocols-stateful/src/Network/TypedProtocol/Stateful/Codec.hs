@@ -1,12 +1,15 @@
 {-# LANGUAGE FlexibleContexts      #-}
 {-# LANGUAGE FlexibleInstances     #-}
 {-# LANGUAGE GADTs                 #-}
+{-# LANGUAGE LambdaCase            #-}
 {-# LANGUAGE NamedFieldPuns        #-}
 {-# LANGUAGE QuantifiedConstraints #-}
 {-# LANGUAGE RankNTypes            #-}
 {-# LANGUAGE ScopedTypeVariables   #-}
+{-# LANGUAGE TypeApplications      #-}
 {-# LANGUAGE TypeFamilies          #-}
 {-# LANGUAGE TypeInType            #-}
+{-# LANGUAGE TypeOperators         #-}
 -- @UndecidableInstances@ extension is required for defining @Show@ instance of
 -- @'AnyMessage'@ and @'AnyMessage'@.
 {-# LANGUAGE UndecidableInstances  #-}
@@ -19,6 +22,7 @@ module Network.TypedProtocol.Stateful.Codec
     Codec (..)
   , hoistCodec
   , isoCodec
+  , idCodec
   , mapFailureCodec
   , liftCodec
     -- ** Related types
@@ -42,8 +46,10 @@ module Network.TypedProtocol.Stateful.Codec
 
 import           Data.Kind (Type)
 import           Data.Monoid (All (..))
+import           Data.Type.Equality ((:~:) (..))
 
 import           Data.Singletons
+import           Data.Singletons.ShowSing
 
 import           Network.TypedProtocol.Codec (CodecFailure (..),
                      DecodeStep (..), SomeMessage (..), hoistDecodeStep,
@@ -94,6 +100,35 @@ isoCodec g finv Codec {encode, decode} = Codec {
       encode = \f msg -> g $ encode f msg,
       decode = \stok f -> isoDecodeStep g finv <$> decode stok f
     }
+
+-- TODO lift non-stateful idCodec, add variant that doesn't use TestEquality
+idCodec
+  :: forall ps m f.
+     ( Applicative m
+     , ShowSing ps
+     , forall (st :: ps) (st' :: ps). Show (Message ps st st')
+     )
+  => (forall st st'. Sing @ps st -> Sing st' -> Maybe (st :~: st'))
+  -> Codec ps CodecFailure f m (TP.AnyMessage ps)
+idCodec stEq = Codec {
+      encode = \_f -> TP.AnyMessage,
+      decode = \stok _f -> pure $ DecodePartial $ pure . \case
+          Nothing                  -> DecodeFail CodecFailureOutOfInput
+          Just (TP.AnyMessage msg) -> checkStatesMatch stok msg
+    }
+  where
+    checkStatesMatch
+      :: forall (st :: ps) (st' :: ps) (st'' :: ps).
+         ( ActiveState st', SingI st', SingI st'' )
+      => Sing st
+      -> Message ps st' st''
+      -> DecodeStep (TP.AnyMessage ps) CodecFailure m (SomeMessage st)
+    checkStatesMatch stok msg = case stEq stok (sing @st') of
+        Just Refl -> DecodeDone (SomeMessage msg) Nothing
+        Nothing   -> DecodeFail . CodecFailure $
+             "invalid state: expected " <> show stok
+          <> ", but got message " <> show msg
+          <> " with starting state " <> show (sing @st')
 
 mapFailureCodec
   :: Functor m
